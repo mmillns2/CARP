@@ -44,7 +44,13 @@ def run_CARP(dig_config, rec_config):
     '''
 
     from core import controller
-    controller = controller.Controller(dig_config, rec_config)
+
+    # --- include global display buffer ---
+    from core import tsqueue
+    display_buffer = tsqueue.TSQueue()
+    # -------------------------------------
+
+    controller = controller.Controller(display_buffer, dig_config, rec_config)
     sys.exit(controller.run_app())
 
 

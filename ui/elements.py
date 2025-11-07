@@ -72,6 +72,7 @@ class StatsBox(QGroupBox):
 
         layout.addWidget(self.fps_label)
 
+# need to check make sure acquisition is not already running before calling reset or connect
 class ConnectDigitiser(QGroupBox):
     def __init__(self, controller, parent=None):
         super().__init__("Connection", parent = parent)
@@ -102,6 +103,8 @@ class ConnectDigitiser(QGroupBox):
         #self.combobox_ports.addItems([f"Port {random.randint(0,10)}", f"Port {random.randint(0,10)}", f"Port {random.randint(0,10)}"])
 
 
+# --- currently not thread safe ---
+# not allowed to call digitiser here 
 class Acquisition(QGroupBox):
     '''
     Acquisition control panel for the digitiser.
@@ -130,7 +133,7 @@ class Acquisition(QGroupBox):
         '''
         Update the acquisition status based on the digitiser state.
         '''
-        if self.controller.digitiser is None:
+        if self.controller.digitiser is None:   # should be thread safe??
             self.start_stop.setStyleSheet("background-color: grey; color: black")
             self.record.setStyleSheet("background-color: grey; color: black")
         else:
@@ -142,20 +145,40 @@ class Acquisition(QGroupBox):
             self.record.clicked.connect(self.toggle_recording)
         
 
-    def toggle_acquisition(self):
-        if self.controller.digitiser.isAcquiring:
+    def toggle_acquisition(self):   # now should be thread safe
+        # if self.controller.digitiser.isAcquiring:   # defo not thread safe
+        if self.controller.acquisition_running: # use local main thread flag 
             logging.info('Stopping acquisition...')
             self.start_stop.setText("Start")
             self.start_stop.setStyleSheet("background-color: green; color: black")
             # stop the acquisition
-            self.controller.digitiser.stop_acquisition()
+            # self.controller.digitiser.stop_acquisition()   # defo not thread safe
+
+            # --- update local main thread flag ---
+            self.controller.acquisition_running = False
+            # -------------------------------------
+
+            # --- signals acquisition_worker.stop() to execute <-- thread safe ---
+            # self.controller.stop_requested.emit()   
+            self.controller.stop_worker()   
+            # --------------------------------------------------------------------
+
+            
         else:
             logging.info('Starting acquisition...')
             self.start_stop.setText("Stop")
             self.start_stop.setStyleSheet("background-color: red; color: white")
-            self.controller.digitiser.isAcquiring = True
+            # self.controller.digitiser.isAcquiring = True   # defo not thread safe
+
             # start the acquisition
-            self.controller.start_acquisition()
+            # self.controller.start_acquisition()   # defo not thread safe
+            self.controller.initialise_worker()
+
+            # --- update local main thread flag ---
+            self.controller.acquisition_running = True
+            # -------------------------------------
+
+
             
     def toggle_recording(self):
         '''

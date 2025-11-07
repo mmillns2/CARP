@@ -13,13 +13,16 @@ import felib.formats as formats
 
 from caen_felib import lib, device, error
 
+from PySide6.QtCore import QObject
 
-class Digitiser():
-    def __init__(self, dig_dict : dict):
+# --- new: inherit from QObject so digitiser can be moved between QThreads
+class Digitiser(QObject):
+    def __init__(self, dig_dict : dict, parent=None):
         '''
         Create the digitiser object and generate the URI
         needed to connect.
         '''
+        super().__init__(parent=parent)
         self.dig_dict = dig_dict
         self.dig_name = dig_dict.get('dig_name')
         self.dig_gen = int(dig_dict.get('dig_gen'))
